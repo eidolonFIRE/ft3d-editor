@@ -220,14 +220,9 @@ class Bank():
 
 if __name__ == "__main__":
     # parse args
-    parser = argparse.ArgumentParser(description='GPS log insights!')
+    parser = argparse.ArgumentParser(description='FT3d MEMORY.dat editor')
     parser.add_argument('input_file', nargs='?',
-                        help='MEMORY.dat', default='MEMORY.dat')
-    # parser.add_argument('-g', dest='show_graph', action='store_true', default=False,
-    #                     help='show graphs')
-    # parser.add_argument('-s', metavar='amount', dest='smooth', nargs=1, type=int,
-    #                     help='path smoothing factor (recommend 20)')
-    # parser.add_argument('-f', dest='fix_alti', action='store_true', default=False)
+                        help='MEMORY.dat file path', default='MEMORY.dat')
     args = parser.parse_args()
 
     # ----- parse -----
