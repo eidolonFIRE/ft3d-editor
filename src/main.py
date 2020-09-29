@@ -17,7 +17,7 @@ if __name__ == "__main__":
                         help='MEMORY.dat or .csv file', default='MEMORY.dat')
     parser.add_argument('-c', dest='csv', action='store_true',
                         help='Export CSV')
-    parser.add_argument('-p', dest='pad', nargs=1, default='1,1',
+    parser.add_argument('-p', dest='pad', nargs='?', default='1,0',
                         help='Pad csv number of COL,ROW')
     args = parser.parse_args()
 
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         with open(args.input_file, "r") as inFile:
             csv = inFile.read()
         channels = []
-        pad = [int(x) for x in args.pad[0].split(",")] if args.pad else [0, 0]
+        pad = [int(x) for x in args.pad.split(",")] if args.pad else [0, 0]
 
         # Parse Channels
         for line in csv.split("\n")[pad[1]:]:
