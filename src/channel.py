@@ -1,6 +1,7 @@
 from ctypes import *
 from enums import *
 from structs import *
+import re
 
 
 class Channel():
@@ -30,6 +31,7 @@ class Channel():
         self.bandw = Bandw((struct.optionsA >> 5) & 0x1)
         self.s_meter = struct.s_meter & 0xf
         self.offset = self._parse_freq(struct.offset)
+        self.charset = struct.charset
         self.banks = []
 
         if banks is not None:
@@ -51,16 +53,47 @@ class Channel():
             self.tone_mode = ToneMode(0)
             self.offset_pol = OffsetPol(0)
 
+    def to_dat(self):
+        # if self.raw:
+        #     return self.raw
+
+        chan = Struct_Channel()
+        chan.optionsA = (self.clock_shift << 4) | (self.bandw << 5)
+        chan.step = (self.offset_pol << 4) | (self.step)
+        chan.freq = (c_ubyte * 3)(*self._pack_freq(self.freq))
+        chan.tx = self.txpwr << 6 | self.mode << 4 | self.tone_mode
+        chan.name = bytes([ord(x) for x in self.name] + [0xff] * (16 - len(self.name)))
+        chan.offset = (c_ubyte * 3)(*self._pack_freq(self.offset))
+        chan.tone = TONES.index(self.tone)
+        chan.dcs = DCS_List.index(self.dcs)
+        chan.dcs_pol = self.dcs_pol << 4
+        chan.s_meter = self.s_meter
+        chan.misc_options = self.bell | self.attn << 5
+        if self.charset is not None:
+            chan.charset = self.charset
+
+        # this const seems to appear in every channel
+        chan.optionsA |= 0x5
+        chan.misc_options |= 0x8
+
+        return chan
+
     def _parse_csv(self, csv):
         # ===== parse from .csv table =====
-        self.raw = Struct_Channel()
+        self.raw = None
         self.empty = False
         self.index = int(csv[0])
         self.skip = csv[1] is "S"
         self.enabled = csv[1] is not "R"
         self.name = csv[2]
+        self.charset = (c_ubyte * 2)(*[0x00, 0x00])
+        for x in re.finditer("(#[a-zA-Z])", csv[2]):
+            i = x.span()[0]
+            self.charset[i // 8] |= 0x1 << (7 - i%8)
+            
         self.freq = float(csv[3])
         self.bandw = Bandw.Narrow if "N" in csv[4] else Bandw.Wide
+        self.s_meter = False
         self.txpwr = TxPwr[csv[5]]
         if csv[6]:
             self.offset = abs(float(csv[6]))
@@ -80,27 +113,7 @@ class Channel():
         self.clock_shift = 0
         self.step = Step(0)
 
-    def _parse_name(self, data):
-        return ''.join([chr(i) for i in data]).rstrip('\x00').rstrip('\xff')
-
-    def _parse_freq(self, data):
-        return (
-            (data[0] >> 4) * 100 +
-            (data[0] & 0xf) * 10 +
-            (data[1] >> 4) +
-            (data[1] & 0xf) / 10 +
-            (data[2] >> 4) / 100 +
-            (data[2] & 0xf) / 1000)
-
-    def _channel_state(self):
-        if not self.enabled:
-            return "R"
-        elif self.skip:
-            return "S"
-        else:
-            return " "
-
-    def csv(self):
+    def to_csv(self):
         return "{idx:4}, {flag:1}, {name:16}, {rxfq:6.3f}, {bndw:1}, {pwr}, {ofst:4.1f}, {mode:>3}, {tnmd:3}, {tone}, {dcs:3}, {dcs_pol:7},{banks},".format(
             idx =self.index,
             flag=self._channel_state(),
@@ -117,8 +130,33 @@ class Channel():
             banks=",".join([" TRUE" if x else "FALSE" for x in self.banks])
             )
 
+    def _parse_name(self, data):
+        return ''.join([chr(i) for i in data]).rstrip('\x00').rstrip('\xff')
+
+    def _parse_freq(self, data):
+        return (
+            (data[0] >> 4) * 100 +
+            (data[0] & 0xf) * 10 +
+            (data[1] >> 4) +
+            (data[1] & 0xf) / 10 +
+            (data[2] >> 4) / 100 +
+            (data[2] & 0xf) / 1000)
+
+    def _pack_freq(self, freq):
+        return [int(freq / 100) % 10 << 4 | int(freq / 10) % 10,
+                int(freq) % 10 << 4 | int(freq * 10) % 10,
+                int(freq * 100) % 10 << 4 | int(freq * 1000) % 10]
+
+    def _channel_state(self):
+        if not self.enabled:
+            return "R"
+        elif self.skip:
+            return "S"
+        else:
+            return " "
+
     def __str__(self):
-        return "{flag:1} {idx:4}) {name:16} | {rxfq:6.3f}mHz {bndw:3} step:{step:>5}kHz {ofst:>16} | {pwr} {mode:>3} {tnmd:4} {tone:>10} | DCS:{dcs:3} {dcs_pol:7} | {raw1:02x} {raw4:02x}{raw5:02x} {raw6:02x} {raw7:02x} {raw8:02x}".format(
+        return "{flag:1} {idx:4}) {name:16} | {rxfq:6.3f}mHz {bndw:3} step:{step:>5}kHz {ofst:>16} | {pwr} {mode:>3} {tnmd:4} {tone:>10} | DCS:{dcs:3} {dcs_pol:7} | {raw1:02x} {raw6:02x} {raw7:02x} {raw8:02x}".format(
             flag=self._channel_state(),
             idx =self.index,
             name=self.name,
@@ -132,10 +170,8 @@ class Channel():
             tone="{:5.1f}mHz".format(self.tone) if self.tone_mode else "",
             dcs =self.dcs if self.tone_mode else "",
             dcs_pol=self.dcs_pol.name if self.tone_mode else "",
-            raw1=self.raw.optionsA & 0xcf,
-            raw4=self.raw.unknown[0],
-            raw5=self.raw.unknown[1],
-            raw6=self.raw.dcs_pol & 0xf0,
-            raw7=self.raw.s_meter & 0xf0,
-            raw8=self.raw.misc_options & 0xde,
+            raw1=self.raw.optionsA & 0xcf if self.raw else 0,
+            raw6=self.raw.dcs_pol & 0xf0 if self.raw else 0,
+            raw7=self.raw.s_meter & 0xf0 if self.raw else 0,
+            raw8=self.raw.misc_options & 0xde if self.raw else 0,
             )

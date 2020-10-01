@@ -1,10 +1,20 @@
 #!/usr/bin/python3
 from bank import Bank
 from channel import Channel
+from structs import Struct_File, Struct_Channel
+
 import argparse
 from ctypes import *
 
 
+
+def calc_checksum(file):
+    if isinstance(file, Struct_File):
+        buf = (c_char * sizeof(file))()
+        memmove(buf, byref(file), sizeof(file))
+        return sum([ord(x) for x in buf])
+    else:
+        return sum(raw[:43000])
 
 
 # ==============================================================================
@@ -15,13 +25,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='FT3d MEMORY.dat editor')
     parser.add_argument('input_file', nargs='?',
                         help='MEMORY.dat or .csv file', default='MEMORY.dat')
-    parser.add_argument('-c', dest='csv', action='store_true',
-                        help='Export CSV')
-    parser.add_argument('-p', dest='pad', nargs='?', default='1,0',
+    parser.add_argument('-c', dest='csv', nargs='?', const=True,
+                        help='Export CSV file')
+    parser.add_argument('-d', dest='dat', nargs='?', const=True,
+                        help='Export dat file')
+    parser.add_argument('-p', dest='pad', nargs='?', const='1,0',
                         help='Pad csv number of COL,ROW')
     args = parser.parse_args()
 
     channels = None
+    banks = None
+
+    # ======= INPUT =======
 
     if ".dat" in args.input_file.lower():
         # ----- parse -----
@@ -35,7 +50,7 @@ if __name__ == "__main__":
 
         print("checksum: {:04X}".format(data.checksum))
 
-        _checksum = sum(raw[:43000])
+        _checksum = calc_checksum(raw)
         if data.checksum != _checksum:
             print("Checksum mismatch! Should be {}".format(_checksum))
         print("sum: {:04X}".format(_checksum))
@@ -70,12 +85,62 @@ if __name__ == "__main__":
         print("Unrecognized input file type: {}".format(args.input_file))
 
 
+    # ======= OUTPUT =======
+
+    # --- CSV FILE ---
+    if args.csv and isinstance(args.csv, str):
+        with open(args.csv, 'w') as csvOut:
+            for ch in channels:
+                if not ch.empty and ch.enabled:
+                    csv.write(ch.to_csv() + "\n")
+
+    # --- DAT FILE ---
+    if args.dat and isinstance(args.dat, str):
+        with open(args.dat, 'wb') as datOut:
+            file = Struct_File()
+
+            # initialize with 0xff values
+            # memset(byref(file), 0xff, sizeof(file))
+
+            for ch in channels:
+                idx = ch.index - 1
+                if sum(file.channels[idx].name) > 0:
+                    print("Error. Channel {} is already filled!".format(idx))
+                    continue
+
+                if not ch.empty:
+                    # write channel entry
+                    file.channels[idx] = ch.to_dat()
+                    # write channel flag
+                    file.channel_flags[idx] = (0x1 - ch.empty * 0x1) | ch.enabled * 0x2 | ch.skip * 0x4
+
+            # blank the rest of the channels
+            allChans = set([x.index - 1 for x in channels if not x.empty])
+            print(allChans)
+            for i in range(1100):
+                if i not in allChans:
+                    memset(byref(file.channels[i]), 0xff, sizeof(Struct_Channel))
+
+            # fill bank lists
+            for bk in banks:
+                for idx, ch in enumerate(bk.channels):
+                    file.banks[bk.index].channels[idx] = ch - 1
+                # blank the rest
+                file.banks[bk.index].channels[len(bk.channels):] = [0xffff] * (100 - len(bk.channels))
+
+            # set the checksum
+            file.checksum = calc_checksum(file)
+
+            datOut.write(file)
+
+
+    # --- PRINT TO CLI ---
     if channels:
         print("\n///// CHANNELS /////")
         for ch in channels:
             if not ch.empty and ch.enabled:
-                if args.csv:
-                    print(ch.csv())
+                if args.csv is not None:
+                    print(ch.to_csv())
                 else:
                     print(ch)
 

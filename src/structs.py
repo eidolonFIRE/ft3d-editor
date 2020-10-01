@@ -8,9 +8,6 @@ from ctypes import BigEndianStructure, c_ubyte, c_char, c_ushort, c_uint
 # [4]   : clock shift
 # [3-0] : ???
 
-# ---( unkown )---
-# [15-0] : ???     ... could be related to modem? Has data for APRS station
-
 # ---( dcs_pol )---
 # [7-4] : ???
 # [3-0] : dcs polarity
@@ -31,7 +28,7 @@ class Struct_Channel(BigEndianStructure):  # size:32
                 ("step", c_ubyte),
                 ("freq", c_ubyte * 3),
                 ("tx", c_ubyte),
-                ("unknown", c_ubyte * 2),
+                ("charset", c_ubyte * 2),
                 ("name", c_char * 16),
                 ("offset", c_ubyte * 3),
                 ("tone", c_ubyte),
@@ -45,6 +42,7 @@ class Struct_Bank(BigEndianStructure):  # size:200
     _fields_ = [("channels", c_ushort * 100)]
 
 
+# (wires-X)
 class Struct_DGID(BigEndianStructure):  # size:2
     _fields_ = [("rx", c_ubyte),
                 ("tx", c_ubyte)]
@@ -57,4 +55,5 @@ class Struct_File(BigEndianStructure):
                 ("channels", Struct_Channel * 1100),
                 ("dgid", Struct_DGID * 900),  # 41600
                 ("pad_m3", c_ubyte * 654),
-                ("checksum", c_uint)]  # 43800
+                ("checksum", c_uint),  # 43800
+                ("pad_tail", c_ubyte * 356)]
