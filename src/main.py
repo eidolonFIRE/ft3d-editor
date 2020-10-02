@@ -65,12 +65,16 @@ if __name__ == "__main__":
         pad = [int(x) for x in args.pad.split(",")] if args.pad else [0, 0]
 
         # Parse Channels
+        prevIndex = 1
         for line in csv.split("\n")[pad[1]:]:
-            csv = [x.strip() for x in line.split(",")]
+            csv = [x.strip() for x in line.split(",")[pad[0]:]]
             # If it's valid line, parse to Channel()
             # To be valid the first cell (index) is non-empty
-            if len(csv[pad[0]]):
-                channels.append(Channel(csv=csv[pad[0]:]))
+            if len(csv[0]) and csv[0] is not "X":
+                if csv[0] is "-":
+                    csv[0] = prevIndex + 1
+                channels.append(Channel(csv=csv))
+                prevIndex = channels[-1].index
 
         # Assemble Banks
         banks = [Bank(x) for x in range(24)]
@@ -98,9 +102,6 @@ if __name__ == "__main__":
     if args.dat and isinstance(args.dat, str):
         with open(args.dat, 'wb') as datOut:
             file = Struct_File()
-
-            # initialize with 0xff values
-            # memset(byref(file), 0xff, sizeof(file))
 
             for ch in channels:
                 idx = ch.index - 1

@@ -94,7 +94,7 @@ class Channel():
         self.freq = float(csv[3])
         self.bandw = Bandw.Narrow if "N" in csv[4] else Bandw.Wide
         self.s_meter = False
-        self.txpwr = TxPwr[csv[5]]
+        self.txpwr = TxPwr[csv[5]] if csv[5] else TxPwr.High
         if csv[6]:
             self.offset = abs(float(csv[6]))
             self.offset_pol = (OffsetPol.MINUS if float(csv[6]) < 0 else OffsetPol.PLUS) if float(csv[6]) is not 0.0 else OffsetPol.NONE
