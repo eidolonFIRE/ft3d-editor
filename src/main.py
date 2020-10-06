@@ -96,7 +96,7 @@ if __name__ == "__main__":
         with open(args.csv, 'w') as csvOut:
             for ch in channels:
                 if not ch.empty and ch.enabled:
-                    csv.write(ch.to_csv() + "\n")
+                    csvOut.write(ch.to_csv() + "\n")
 
     # --- DAT FILE ---
     if args.dat and isinstance(args.dat, str):
