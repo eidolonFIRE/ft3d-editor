@@ -33,6 +33,7 @@ class Channel():
         self.offset = self._parse_freq(struct.offset)
         self.charset = struct.charset
         self.banks = []
+        self.rx_mode = RxMode.AM if (struct.step >> 6) & 0x1 else (RxMode.AUTO if ((struct.misc_options >> 3) & 0x1) else RxMode.FM)
 
         if banks is not None:
             for each in banks:
@@ -44,7 +45,7 @@ class Channel():
             self.dcs = DCS_List[struct.dcs]
             self.dcs_pol = DCSPolarity((struct.dcs_pol >> 4) & 0xf)
             self.tone_mode = ToneMode(struct.tx & 0xf)
-            self.offset_pol = OffsetPol((struct.step >> 4) & 0xf)
+            self.offset_pol = OffsetPol((struct.step >> 4) & 0x3)
         else:
             self.step = Step(0)
             self.tone = TONES[0]
@@ -54,12 +55,9 @@ class Channel():
             self.offset_pol = OffsetPol(0)
 
     def to_dat(self):
-        # if self.raw:
-        #     return self.raw
-
         chan = Struct_Channel()
         chan.optionsA = (self.clock_shift << 4) | (self.bandw << 5)
-        chan.step = (self.offset_pol << 4) | (self.step)
+        chan.step = (self.offset_pol << 4) | (self.step) | ((self.rx_mode == RxMode.AM) << 6)
         chan.freq = (c_ubyte * 3)(*self._pack_freq(self.freq))
         chan.tx = self.txpwr << 6 | self.mode << 4 | self.tone_mode
         chan.name = bytes([ord(x) for x in self.name] + [0xff] * (16 - len(self.name)))
@@ -68,13 +66,12 @@ class Channel():
         chan.dcs = DCS_List.index(self.dcs)
         chan.dcs_pol = self.dcs_pol << 4
         chan.s_meter = self.s_meter
-        chan.misc_options = self.bell | self.attn << 5
+        chan.misc_options = self.bell | self.attn << 5 | ((self.rx_mode == RxMode.AUTO) << 3)
         if self.charset is not None:
             chan.charset = self.charset
 
         # this const seems to appear in every channel
         chan.optionsA |= 0x5
-        chan.misc_options |= 0x8
 
         return chan
 
@@ -90,7 +87,7 @@ class Channel():
         for x in re.finditer("(#[a-zA-Z])", csv[2]):
             i = x.span()[0]
             self.charset[i // 8] |= 0x1 << (7 - i%8)
-            
+
         self.freq = float(csv[3])
         self.bandw = Bandw.Narrow if "N" in csv[4] else Bandw.Wide
         self.s_meter = False
@@ -101,7 +98,15 @@ class Channel():
         else:
             self.offset = 0.0
             self.offset_pol = OffsetPol.NONE
-        self.mode = Mode[csv[7]]
+
+        # airband special case
+        if 108.0 <= self.freq <= 137 or csv[7].upper() is "AM":
+            self.mode = Mode.FM
+            self.rx_mode = RxMode.AM
+        else:
+            self.mode = Mode[csv[7]]
+            self.rx_mode = RxMode.AUTO
+
         self.tone_mode = ToneMode[csv[8] or "NONE"]
         self.tone = float(csv[9]) if csv[9] else 100.0
         self.dcs = int(csv[10]) if csv[10] else DCS_List[0]
@@ -122,7 +127,7 @@ class Channel():
             bndw="N" if self.bandw is Bandw.Narrow else "",
             ofst=(self.offset * (-1 if self.offset_pol is OffsetPol.MINUS else 1)) if self.offset_pol > 0 else 0.0,
             pwr =self.txpwr.name,
-            mode=self.mode.name,
+            mode=RxMode.AM.name if self.rx_mode is RxMode.AM else self.mode.name,
             tnmd=self.tone_mode.name if self.tone_mode else "",
             tone="{:5.1f}".format(self.tone) if self.tone_mode else "",
             dcs =self.dcs if self.tone_mode is ToneMode.DCS else "",
@@ -165,7 +170,7 @@ class Channel():
             step=self.step.name[1:].replace("_", "."),
             ofst="offset:{:4.1f}mHz".format(self.offset * (-1 if self.offset_pol is OffsetPol.MINUS else 1)) if self.offset_pol else "",
             pwr =self.txpwr.name,
-            mode=self.mode.name,
+            mode=RxMode.AM.name if self.rx_mode is RxMode.AM else self.mode.name,
             tnmd=self.tone_mode.name if self.tone_mode else "",
             tone="{:5.1f}mHz".format(self.tone) if self.tone_mode else "",
             dcs =self.dcs if self.tone_mode else "",

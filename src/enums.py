@@ -24,6 +24,10 @@ class Mode(IntEnum):
     DN = 2  # digital
     VW = 3  # wide digital
 
+class RxMode(IntEnum):
+    AUTO = 0
+    FM = 1
+    AM = 2
 
 class ToneMode(IntEnum):
     NONE = 0
@@ -62,8 +66,6 @@ class OffsetPol(IntEnum):
     NONE = 0
     MINUS = 1
     PLUS = 2
-    UNKNOWN = 3
-    UNKNOWN2 = 4  # this shows up for airband
 
 
 TONES = [67, 69.3, 71.9, 74.4, 77, 79.7, 82.5, 85.4, 88.5, 91.5, 94.8, 97.4, 100.0, 103.5,

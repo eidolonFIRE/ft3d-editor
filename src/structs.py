@@ -19,7 +19,9 @@ from ctypes import BigEndianStructure, c_ubyte, c_char, c_ushort, c_uint
 # ---( misc_options )---
 # [7-6] : ???
 # [5]   : attenuator enabled
-# [4-1] : ???              ... something shows up for modem APRS station
+# [4]   : ???
+# [3]   : auto rx mode
+# [2-1] : ???
 # [0]   : bell enabled
 
 
