@@ -27,9 +27,11 @@ class Channel():
         self.mode = Mode((struct.tx >> 4) & 0x3)
         self.bell = struct.misc_options & 0x1
         self.attn = (struct.misc_options >> 5) & 0x1
+        self.unk_misc = (struct.misc_options >> 4) & 0x1
         self.clock_shift = ClockShift((struct.optionsA >> 4) & 0x1)
         self.bandw = Bandw((struct.optionsA >> 5) & 0x1)
         self.s_meter = struct.s_meter & 0xf
+        self.squelch = struct.s_meter >> 7
         self.offset = self._parse_freq(struct.offset)
         self.charset = struct.charset
         self.banks = []
@@ -56,7 +58,19 @@ class Channel():
 
     def to_dat(self):
         chan = Struct_Channel()
+
         chan.optionsA = (self.clock_shift << 4) | (self.bandw << 5)
+        if self.freq >= 30000:
+            chan.optionsA |= 5
+        elif self.freq >= 3000:
+            chan.optionsA |= 4
+        elif self.freq >= 300:
+            chan.optionsA |= 3
+        elif self.freq >= 30:
+            chan.optionsA |= 2
+        elif self.freq >= 3:
+            chan.optionsA |= 1
+
         chan.step = (self.offset_pol << 4) | (self.step) | ((self.rx_mode == RxMode.AM) << 6)
         chan.freq = (c_ubyte * 3)(*self._pack_freq(self.freq))
         chan.tx = self.txpwr << 6 | self.mode << 4 | self.tone_mode
@@ -65,13 +79,13 @@ class Channel():
         chan.tone = TONES.index(self.tone)
         chan.dcs = DCS_List.index(self.dcs)
         chan.dcs_pol = self.dcs_pol << 4
-        chan.s_meter = self.s_meter
-        chan.misc_options = self.bell | self.attn << 5 | ((self.rx_mode == RxMode.AUTO) << 3)
+        chan.s_meter = self.s_meter | (self.squelch << 7)
+        chan.misc_options = self.bell | self.attn << 5 | ((self.rx_mode == RxMode.AUTO) << 3) | (self.unk_misc << 4)
         if self.charset is not None:
             chan.charset = self.charset
 
-        # this const seems to appear in every channel
-        chan.optionsA |= 0x5
+        # this const seems to appears in every channel
+        chan.dcs_pol |= 0xd
 
         return chan
 
@@ -90,7 +104,7 @@ class Channel():
 
         self.freq = round(float(csv[3]), 3)
         self.bandw = Bandw.Narrow if "N" in csv[4] else Bandw.Wide
-        self.s_meter = False
+        self.s_meter = 0
         self.txpwr = TxPwr[csv[5]] if csv[5] else TxPwr.High
         if csv[6]:
             self.offset = abs(round(float(csv[6]), 3))
@@ -108,6 +122,7 @@ class Channel():
             self.rx_mode = RxMode.AUTO
 
         self.tone_mode = ToneMode[csv[8] or "NONE"]
+        self.squelch = 0 if self.tone_mode > 0 else 1
         self.tone = float(csv[9]) if csv[9] else 100.0
         self.dcs = int(csv[10]) if csv[10] else DCS_List[0]
         self.dcs_pol = DCSPolarity[csv[11]] if csv[11] else DCSPolarity(0)
@@ -115,6 +130,7 @@ class Channel():
 
         self.bell = 0
         self.attn = 0
+        self.unk_misc = 1
         self.clock_shift = 0
         self.step = Step(0)
 

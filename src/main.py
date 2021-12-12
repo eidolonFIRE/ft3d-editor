@@ -103,6 +103,9 @@ if __name__ == "__main__":
         with open(args.dat, 'wb') as datOut:
             file = Struct_File()
 
+            memset(file.pad_m2, 3, sizeof(file.pad_m2))
+            memset(file.pad_m2, 0, 8)
+
             for ch in channels:
                 idx = ch.index - 1
                 if sum(file.channels[idx].name) > 0:
