@@ -88,12 +88,12 @@ class Channel():
             i = x.span()[0]
             self.charset[i // 8] |= 0x1 << (7 - i%8)
 
-        self.freq = float(csv[3])
+        self.freq = round(float(csv[3]), 3)
         self.bandw = Bandw.Narrow if "N" in csv[4] else Bandw.Wide
         self.s_meter = False
         self.txpwr = TxPwr[csv[5]] if csv[5] else TxPwr.High
         if csv[6]:
-            self.offset = abs(float(csv[6]))
+            self.offset = abs(round(float(csv[6]), 3))
             self.offset_pol = (OffsetPol.MINUS if float(csv[6]) < 0 else OffsetPol.PLUS) if float(csv[6]) != 0.0 else OffsetPol.NONE
         else:
             self.offset = 0.0
@@ -139,18 +139,21 @@ class Channel():
         return ''.join([chr(i) for i in data]).rstrip('\x00').rstrip('\xff')
 
     def _parse_freq(self, data):
-        return (
+        return round((
             (data[0] >> 4) * 100 +
             (data[0] & 0xf) * 10 +
             (data[1] >> 4) +
             (data[1] & 0xf) / 10 +
             (data[2] >> 4) / 100 +
-            (data[2] & 0xf) / 1000)
+            (data[2] & 0xf) / 1000), 3)
 
     def _pack_freq(self, freq):
-        return [int(freq / 100) % 10 << 4 | int(freq / 10) % 10,
-                int(freq) % 10 << 4 | int(freq * 10) % 10,
-                int(freq * 100) % 10 << 4 | int(freq * 1000) % 10]
+        return [(int(round(freq / 100,  5)) % 10 << 4 |
+                 int(round(freq / 10,   4)) % 10),
+                (int(round(freq,        3)) % 10 << 4 |
+                 int(round(freq * 10,   2)) % 10),
+                (int(round(freq * 100,  1)) % 10 << 4 |
+                 int(round(freq * 1000, 0)) % 10)]
 
     def _channel_state(self):
         if not self.enabled:
