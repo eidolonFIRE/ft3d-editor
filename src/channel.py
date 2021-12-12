@@ -80,8 +80,8 @@ class Channel():
         self.raw = None
         self.empty = False
         self.index = int(csv[0])
-        self.skip = csv[1] is "S"
-        self.enabled = csv[1] is not "R"
+        self.skip = csv[1] == "S"
+        self.enabled = csv[1] != "R"
         self.name = csv[2]
         self.charset = (c_ubyte * 2)(*[0x00, 0x00])
         for x in re.finditer("(#[a-zA-Z])", csv[2]):
@@ -94,13 +94,13 @@ class Channel():
         self.txpwr = TxPwr[csv[5]] if csv[5] else TxPwr.High
         if csv[6]:
             self.offset = abs(float(csv[6]))
-            self.offset_pol = (OffsetPol.MINUS if float(csv[6]) < 0 else OffsetPol.PLUS) if float(csv[6]) is not 0.0 else OffsetPol.NONE
+            self.offset_pol = (OffsetPol.MINUS if float(csv[6]) < 0 else OffsetPol.PLUS) if float(csv[6]) != 0.0 else OffsetPol.NONE
         else:
             self.offset = 0.0
             self.offset_pol = OffsetPol.NONE
 
         # airband special case
-        if 108.0 <= self.freq <= 137 or csv[7].upper() is "AM":
+        if 108.0 <= self.freq <= 137 or csv[7].upper() == "AM":
             self.mode = Mode.FM
             self.rx_mode = RxMode.AM
         else:
