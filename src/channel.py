@@ -97,7 +97,7 @@ class Channel():
         self.index = int(csv[0])
         self.priority = csv[1] == "ON"
         self.skip = csv[19] == "ON"
-        self.step = Step[f"_{csv[21].strip('KHz').replace('.','_')}" if csv[21] else "_auto"]
+        self.step = Step[f"_{csv[21].strip('KHz').replace('.','_')}" if csv[21] else "_AUTO"]
         self.attn = csv[23] == "ON"
         self.bell = csv[25] == "ON"
         self.clock_shift = ClockShift.A if csv[27] == "OFF" else ClockShift.B
@@ -107,7 +107,7 @@ class Channel():
             i = x.span()[0]
             self.charset[i // 8] |= 0x1 << (7 - i%8)
 
-        self.freq = round(float(csv[2]), 3)
+        self.freq = round(float(csv[2]), 3) if csv[2] else 0.0
         self.bandw = Bandw.Narrow if csv[26] == "ON" else Bandw.Wide
         self.squelch = csv[24] == "ON"
         self.txpwr = TxPwr[csv[18].split()[0]] if csv[18].startswith("L") else TxPwr.High
@@ -126,7 +126,7 @@ class Channel():
             self.mode = Mode.FM
             self.rx_mode = RxMode.AM
         else:
-            self.mode = Mode[csv[8]]
+            self.mode = Mode[csv[8]] if csv[8] else Mode.FM
             self.rx_mode = RxMode.AUTO if csv[6] == "ON" else RxMode.FM
 
         self.tone_mode = ToneMode[csv[11].replace(' ', '_') or "OFF"]
