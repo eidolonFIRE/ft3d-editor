@@ -12,9 +12,9 @@ class Bandw(IntEnum):
 
 
 class TxPwr(IntEnum):
-    Low1 = 0
-    Low2 = 1
-    Low3 = 2
+    L1 = 0
+    L2 = 1
+    L3 = 2
     High = 3
 
 
@@ -30,42 +30,45 @@ class RxMode(IntEnum):
     AM = 2
 
 class ToneMode(IntEnum):
-    NONE = 0
-    TN = 1
-    TSQ = 2
+    OFF = 0
+    TONE = 1
+    TONE_SQL = 2
     DCS = 3
-    RTN = 4
-    PR = 5
-    PAG = 6
+    REV_TONE = 4
+    PR_FREQ = 5
+    PAGER = 6
     DC = 9
     T_D = 0xa
     D_T = 0xb
 
 
 class DCSPolarity(IntEnum):
-    RxN_TxN = 0
-    RxI_TxN = 2
-    RxB_TxN = 4
-    RxN_TxI = 6
-    RxI_TxI = 8
-    RxB_TxI = 0xa
+    RX_Normal_TX_Normal = 0
+    RX_Invert_TX_Normal = 2
+    RX_Both_TX_Normal   = 4
+    RX_Normal_TX_Invert = 6
+    RX_Invert_TX_Invert = 8
+    RX_Both_TX_Invert   = 0xa
 
 
 class Step(IntEnum):
-    _auto = 0
-    _10_0 = 0x3
-    _12_5 = 0x4
-    _15_0 = 0x5
-    _20_0 = 0x6
-    _25_0 = 0x7
-    _50_0 = 0x8
-    _100_0 = 0x9
+    _AUTO  = 0
+    _5_0   = 1
+    _7_5   = 2
+    _10_0  = 3
+    _12_5  = 4
+    _15_0  = 5
+    _20_0  = 6
+    _25_0  = 7
+    _50_0  = 8
+    _100_0 = 9
 
 
 class OffsetPol(IntEnum):
-    NONE = 0
+    OFF = 0
     MINUS = 1
     PLUS = 2
+    PLUS_MINUS = 3
 
 
 TONES = [67, 69.3, 71.9, 74.4, 77, 79.7, 82.5, 85.4, 88.5, 91.5, 94.8, 97.4, 100.0, 103.5,

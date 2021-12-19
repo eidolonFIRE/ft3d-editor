@@ -70,8 +70,8 @@ if __name__ == "__main__":
             csv = [x.strip() for x in line.split(",")[pad[0]:]]
             # If it's valid line, parse to Channel()
             # To be valid the first cell (index) is non-empty
-            if len(csv[0]) and csv[0] is not "X":
-                if csv[0] is "-":
+            if len(csv[0]) and csv[0] != "X":
+                if csv[0] == "-":
                     csv[0] = prevIndex + 1
                 channels.append(Channel(csv=csv))
                 prevIndex = channels[-1].index
@@ -102,6 +102,9 @@ if __name__ == "__main__":
     if args.dat and isinstance(args.dat, str):
         with open(args.dat, 'wb') as datOut:
             file = Struct_File()
+
+            memset(file.pad_m2, 3, sizeof(file.pad_m2))
+            memset(file.pad_m2, 0, 8)
 
             for ch in channels:
                 idx = ch.index - 1
